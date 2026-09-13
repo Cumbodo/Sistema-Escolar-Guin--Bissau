@@ -1,6 +1,6 @@
-# [Project name]
+# Gestão Escolar Guiné-Bissau
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Plataforma em português para escolas da Guiné-Bissau gerirem matrículas, turmas, propinas, despesas, notas trimestrais e documentos oficiais.
 
 ## Run & Operate
 
@@ -22,23 +22,36 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/gestao-escolar/src/App.tsx` — shell, rotas e interfaces do painel.
+- `artifacts/gestao-escolar/src/index.css` — tokens visuais, responsividade e impressão A4.
+- `lib/api-spec/openapi.yaml` — contrato único dos endpoints escolares.
+- `artifacts/api-server/src/routes/school.ts` — rotas de escolas, classes, alunos, finanças e pautas.
+- `lib/db/src/schema/` — tabelas PostgreSQL para escolas, classes, alunos, propinas, despesas e pautas.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- A plataforma usa uma API partilhada com contrato OpenAPI e hooks gerados para manter a interface e o servidor alinhados.
+- As notas ficam organizadas por turma e trimestre, com campos independentes para P1, P2, P3, coordenação, média e época.
+- A impressão é feita no navegador com folhas A4 em formato horizontal, deixando os controlos fora do documento.
+- O dinheiro é apresentado em FCFA/XOF e as datas escolares são guardadas como datas de calendário.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Painel de controlo com totais de alunos, desistências, classes, propinas, despesas e ocupação.
+- Aprovação ou rejeição de pedidos de adesão de escolas.
+- Personalização de classes do Jardim ao 12.º ano e subdivisões como A1/A2.
+- Matrículas com escolha obrigatória da classe.
+- Contabilidade geral com receitas, propinas pendentes, despesas e saldo.
+- Pautas trimestrais editáveis e imprimíveis, além de declarações e certificados.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- A interface deve permanecer em português e adequada ao uso de escolas da Guiné-Bissau.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Depois de alterar `lib/api-spec/openapi.yaml`, executar `pnpm --filter @workspace/api-spec run codegen` antes de validar os pacotes.
+- O app web e a API precisam ser reiniciados pelos workflows geridos para refletir alterações de código.
 
 ## Pointers
 

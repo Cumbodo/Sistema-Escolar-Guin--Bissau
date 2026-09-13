@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Gestão Escolar Guiné-Bissau"
+description = "Plataforma escolar em português para escolas da Guiné-Bissau gerirem adesão, matrículas, turmas, alunos, propinas, despesas, notas trimestrais e documentos imprimíveis."
+version = "1.0.0"
+id = "artifacts/gestao-escolar"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23667
+
+[services.development]
+run = "pnpm --filter @workspace/gestao-escolar run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/gestao-escolar", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/gestao-escolar/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23667"
+BASE_PATH = "/"

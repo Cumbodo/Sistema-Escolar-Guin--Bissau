@@ -3,13 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API da plataforma de gestão escolar para escolas da Guiné-Bissau
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Indicadores gerais da escola
+  - name: schools
+    description: Adesão e aprovação de escolas
+  - name: classes
+    description: Classes e subdivisões
+  - name: students
+    description: Matrículas e alunos
+  - name: finance
+    description: Propinas, receitas e despesas
+  - name: grades
+    description: Pautas e notas trimestrais
 paths:
   /healthz:
     get:
@@ -24,7 +36,286 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Obter resumo da escola
+      responses:
+        "200":
+          description: Resumo operacional
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /schools:
+    get:
+      operationId: getSchools
+      tags: [schools]
+      summary: Listar escolas
+      responses:
+        "200":
+          description: Lista de escolas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/School"
+    post:
+      operationId: createSchool
+      tags: [schools]
+      summary: Registar uma escola para adesão
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolInput"
+      responses:
+        "201":
+          description: Escola registada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/School"
+  /schools/{schoolId}/status:
+    patch:
+      operationId: updateSchoolStatus
+      tags: [schools]
+      summary: Aprovar ou rejeitar uma escola
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolStatusUpdate"
+      responses:
+        "200":
+          description: Estado atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/School"
+  /classes:
+    get:
+      operationId: getClasses
+      tags: [classes]
+      summary: Listar classes e subdivisões
+      responses:
+        "200":
+          description: Lista de classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClassGroup"
+    post:
+      operationId: createClass
+      tags: [classes]
+      summary: Criar uma classe ou subdivisão
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClassGroupInput"
+      responses:
+        "201":
+          description: Classe criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassGroup"
+  /students:
+    get:
+      operationId: getStudents
+      tags: [students]
+      summary: Listar alunos matriculados
+      parameters:
+        - in: query
+          name: classGroupId
+          schema:
+            type: integer
+          required: false
+        - in: query
+          name: search
+          schema:
+            type: string
+          required: false
+      responses:
+        "200":
+          description: Lista de alunos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+    post:
+      operationId: createStudent
+      tags: [students]
+      summary: Matricular um aluno numa classe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentInput"
+      responses:
+        "201":
+          description: Aluno matriculado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+  /finance/overview:
+    get:
+      operationId: getFinanceOverview
+      tags: [finance]
+      summary: Obter resumo financeiro
+      responses:
+        "200":
+          description: Resumo de receitas e despesas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceOverview"
+  /fees:
+    get:
+      operationId: getFees
+      tags: [finance]
+      summary: Listar propinas
+      responses:
+        "200":
+          description: Lista de propinas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Fee"
+    post:
+      operationId: createFee
+      tags: [finance]
+      summary: Registar pagamento de propina
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeeInput"
+      responses:
+        "201":
+          description: Pagamento registado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fee"
+  /expenses:
+    get:
+      operationId: getExpenses
+      tags: [finance]
+      summary: Listar despesas
+      responses:
+        "200":
+          description: Lista de despesas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [finance]
+      summary: Registar uma despesa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Despesa registada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+  /grade-sheets/{classGroupId}:
+    get:
+      operationId: getGradeSheet
+      tags: [grades]
+      summary: Obter pauta trimestral de uma turma
+      parameters:
+        - $ref: "#/components/parameters/ClassGroupId"
+      responses:
+        "200":
+          description: Pauta com disciplinas e notas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeSheet"
+    put:
+      operationId: updateGradeSheet
+      tags: [grades]
+      summary: Guardar notas de uma pauta
+      parameters:
+        - $ref: "#/components/parameters/ClassGroupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GradeSheetInput"
+      responses:
+        "200":
+          description: Pauta guardada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeSheet"
+  /grade-sheets/{classGroupId}/trimester/{trimester}:
+    get:
+      operationId: getGradeSheetForTrimester
+      tags: [grades]
+      summary: Obter pauta de uma turma por trimestre
+      parameters:
+        - $ref: "#/components/parameters/ClassGroupId"
+        - $ref: "#/components/parameters/Trimester"
+      responses:
+        "200":
+          description: Pauta do trimestre selecionado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeSheet"
 components:
+  parameters:
+    SchoolId:
+      in: path
+      name: schoolId
+      required: true
+      schema:
+        type: integer
+    ClassGroupId:
+      in: path
+      name: classGroupId
+      required: true
+      schema:
+        type: integer
+    Trimester:
+      in: path
+      name: trimester
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 3
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +324,348 @@ components:
           type: string
       required:
         - status
+    DashboardClassCount:
+      type: object
+      properties:
+        className:
+          type: string
+        students:
+          type: integer
+        capacity:
+          type: integer
+      required: [className, students, capacity]
+    DashboardSummary:
+      type: object
+      properties:
+        schoolName:
+          type: string
+        academicYear:
+          type: string
+        totalStudents:
+          type: integer
+        activeStudents:
+          type: integer
+        withdrawnStudents:
+          type: integer
+        totalClasses:
+          type: integer
+        paidFees:
+          type: number
+        pendingFees:
+          type: number
+        totalExpenses:
+          type: number
+        pendingSchools:
+          type: integer
+        enrollmentByClass:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardClassCount"
+      required:
+        - schoolName
+        - academicYear
+        - totalStudents
+        - activeStudents
+        - withdrawnStudents
+        - totalClasses
+        - paidFees
+        - pendingFees
+        - totalExpenses
+        - pendingSchools
+        - enrollmentByClass
+    School:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        city:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        studentsCount:
+          type: integer
+        createdAt:
+          type: string
+      required: [id, name, city, contactName, email, phone, status, studentsCount, createdAt]
+    SchoolInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        city:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+      required: [name, city, contactName, email, phone]
+    SchoolStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected]
+      required: [status]
+    ClassGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+        schoolId:
+          type: integer
+        name:
+          type: string
+        level:
+          type: string
+        section:
+          type: string
+        capacity:
+          type: integer
+        enrolledCount:
+          type: integer
+        academicYear:
+          type: string
+      required: [id, schoolId, name, level, section, capacity, enrolledCount, academicYear]
+    ClassGroupInput:
+      type: object
+      properties:
+        schoolId:
+          type: integer
+        name:
+          type: string
+        level:
+          type: string
+        section:
+          type: string
+        capacity:
+          type: integer
+        academicYear:
+          type: string
+      required: [schoolId, name, level, section, capacity, academicYear]
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentCode:
+          type: string
+        name:
+          type: string
+        gender:
+          type: string
+          enum: [F, M]
+        birthDate:
+          type: [string, "null"]
+        guardianName:
+          type: string
+        phone:
+          type: string
+        classGroupId:
+          type: integer
+        className:
+          type: string
+        enrollmentStatus:
+          type: string
+          enum: [active, withdrawn]
+        feeStatus:
+          type: string
+          enum: [paid, partial, pending]
+        enrolledAt:
+          type: string
+      required: [id, studentCode, name, gender, birthDate, guardianName, phone, classGroupId, className, enrollmentStatus, feeStatus, enrolledAt]
+    StudentInput:
+      type: object
+      properties:
+        name:
+          type: string
+        gender:
+          type: string
+          enum: [F, M]
+        birthDate:
+          type: [string, "null"]
+        guardianName:
+          type: string
+        phone:
+          type: string
+        classGroupId:
+          type: integer
+        feeStatus:
+          type: string
+          enum: [paid, partial, pending]
+      required: [name, gender, guardianName, phone, classGroupId, feeStatus]
+    Fee:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        studentCode:
+          type: string
+        amount:
+          type: number
+        paidAmount:
+          type: number
+        status:
+          type: string
+          enum: [paid, partial, pending]
+        dueDate:
+          type: string
+        paymentDate:
+          type: [string, "null"]
+        reference:
+          type: string
+      required: [id, studentId, studentName, studentCode, amount, paidAmount, status, dueDate, paymentDate, reference]
+    FeeInput:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        amount:
+          type: number
+        paidAmount:
+          type: number
+        dueDate:
+          type: string
+        reference:
+          type: string
+      required: [studentId, amount, paidAmount, dueDate, reference]
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+        description:
+          type: string
+        category:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+        paidBy:
+          type: string
+      required: [id, description, category, amount, date, paidBy]
+    ExpenseInput:
+      type: object
+      properties:
+        description:
+          type: string
+        category:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+        paidBy:
+          type: string
+      required: [description, category, amount, date, paidBy]
+    GradeSubjectScore:
+      type: object
+      properties:
+        subject:
+          type: string
+        period1:
+          type: [number, "null"]
+        period2:
+          type: [number, "null"]
+        period3:
+          type: [number, "null"]
+        coordination:
+          type: [number, "null"]
+        average:
+          type: [number, "null"]
+        extraordinary:
+          type: [number, "null"]
+      required: [subject, period1, period2, period3, coordination, average, extraordinary]
+    GradeStudent:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        studentCode:
+          type: string
+        studentName:
+          type: string
+        scores:
+          type: array
+          items:
+            $ref: "#/components/schemas/GradeSubjectScore"
+      required: [studentId, studentCode, studentName, scores]
+    GradeSheet:
+      type: object
+      properties:
+        classGroupId:
+          type: integer
+        className:
+          type: string
+        academicYear:
+          type: string
+        trimester:
+          type: integer
+        subjects:
+          type: array
+          items:
+            type: string
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/GradeStudent"
+      required: [classGroupId, className, academicYear, trimester, subjects, students]
+    GradeSheetInput:
+      type: object
+      properties:
+        trimester:
+          type: integer
+        subjects:
+          type: array
+          items:
+            type: string
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/GradeStudent"
+      required: [trimester, subjects, students]
+    FinanceOverview:
+      type: object
+      properties:
+        expectedFees:
+          type: number
+        receivedFees:
+          type: number
+        pendingFees:
+          type: number
+        expenses:
+          type: number
+        balance:
+          type: number
+        monthly:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceMonth"
+      required: [expectedFees, receivedFees, pendingFees, expenses, balance, monthly]
+    FinanceMonth:
+      type: object
+      properties:
+        month:
+          type: string
+        income:
+          type: number
+        expenses:
+          type: number
+      required: [month, income, expenses]
 

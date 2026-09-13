@@ -1,3 +1,5 @@
+import { demoApi } from './demo-api';
+
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
 };
@@ -360,7 +362,24 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  let response: Response;
+  try {
+    response = await fetch(input, { ...init, method, headers });
+  } catch (error) {
+    if (typeof window !== 'undefined' && requestInfo.url.startsWith('/api/')) {
+      return demoApi(requestInfo.url, { ...init, method, headers }) as T;
+    }
+    throw error;
+  }
+
+  const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+  if (
+    typeof window !== 'undefined' &&
+    requestInfo.url.startsWith('/api/') &&
+    (response.status === 403 || contentType.includes('text/html'))
+  ) {
+    return demoApi(requestInfo.url, { ...init, method, headers }) as T;
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

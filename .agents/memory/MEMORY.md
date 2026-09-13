@@ -1,0 +1,1 @@
+- [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — this workspace needs DOM iterable types, and mixed path/query parameters can create generated Zod export collisions.
