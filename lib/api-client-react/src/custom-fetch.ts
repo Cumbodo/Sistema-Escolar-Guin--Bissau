@@ -376,7 +376,7 @@ export async function customFetch<T = unknown>(
   if (
     typeof window !== 'undefined' &&
     requestInfo.url.startsWith('/api/') &&
-    (response.status === 403 || contentType.includes('text/html'))
+    (response.status === 403 || response.status === 404 || contentType.includes('text/html'))
   ) {
     return demoApi(requestInfo.url, { ...init, method, headers }) as T;
   }

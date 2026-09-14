@@ -81,7 +81,11 @@ export function demoApi(url: string, options: RequestInit = {}): unknown {
   if (path.endsWith('/students')) {
     if (method === 'POST') { const input = bodyOf(options); const group = data.classes.find((item) => item.id === input.classGroupId); const item = { ...input, id: Date.now(), studentCode: `ECB-${String(data.students.length + 1).padStart(4, '0')}`, className: group?.name ?? 'Classe', enrollmentStatus: 'active', enrolledAt: new Date().toISOString() }; data.students.push(item); if (group) group.enrolledCount = Number(group.enrolledCount ?? 0) + 1; save(data); return item; }
     const query = parsed.searchParams.get('search')?.toLowerCase();
-    return query ? data.students.filter((item) => String(item.name).toLowerCase().includes(query) || String(item.studentCode).toLowerCase().includes(query)) : data.students;
+    const classGroupId = parsed.searchParams.get('classGroupId');
+    let result = data.students;
+    if (classGroupId) result = result.filter((item) => Number(item.classGroupId) === Number(classGroupId));
+    if (query) result = result.filter((item) => String(item.name).toLowerCase().includes(query) || String(item.studentCode).toLowerCase().includes(query));
+    return result;
   }
   if (path.endsWith('/finance/overview')) { const expected = data.fees.reduce((sum, item) => sum + Number(item.amount ?? 0), 0); const received = data.fees.reduce((sum, item) => sum + Number(item.paidAmount ?? 0), 0); const expenses = data.expenses.reduce((sum, item) => sum + Number(item.amount ?? 0), 0); return { expectedFees: expected, receivedFees: received, pendingFees: expected - received, expenses, balance: received - expenses, monthly: [] }; }
   if (path.endsWith('/fees')) { if (method === 'POST') { const input = bodyOf(options); const student = data.students.find((item) => item.id === input.studentId); const item = { ...input, id: Date.now(), studentName: student?.name ?? 'Aluno', studentCode: student?.studentCode ?? '', status: Number(input.paidAmount) >= Number(input.amount) ? 'paid' : Number(input.paidAmount) > 0 ? 'partial' : 'pending', paymentDate: Number(input.paidAmount) > 0 ? new Date().toISOString() : null }; data.fees.push(item); save(data); return item; } return data.fees; }

@@ -36,6 +36,7 @@ export const SchoolStatus = {
   pending: 'pending',
   approved: 'approved',
   rejected: 'rejected',
+  blocked: 'blocked',
 } as const;
 
 export interface School {
@@ -65,6 +66,7 @@ export type SchoolStatusUpdateStatus = typeof SchoolStatusUpdateStatus[keyof typ
 export const SchoolStatusUpdateStatus = {
   approved: 'approved',
   rejected: 'rejected',
+  blocked: 'blocked',
 } as const;
 
 export interface SchoolStatusUpdate {
