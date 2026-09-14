@@ -18,7 +18,7 @@ import {
   ArrowDownRight, ArrowUpRight, Banknote, BarChart3, BookOpen, CalendarDays, Check, ChevronDown,
   CircleAlert, CircleDollarSign, ClipboardList, FileText, GraduationCap, LayoutDashboard, Menu,
   MoreHorizontal, PanelLeftClose, Pencil, Plus, Printer, Receipt, Search, Settings, ShieldCheck,
-  SlidersHorizontal, UserPlus, Users, WalletCards, X, Landmark, Laptop
+  SlidersHorizontal, UserPlus, Users, WalletCards, X, Landmark, Laptop, UserCog, KeyRound, BadgeDollarSign
 } from 'lucide-react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 
@@ -45,6 +45,9 @@ const nav = [
   { href: '/finance', label: 'Finanças', icon: WalletCards },
   { href: '/grades', label: 'Pautas e notas', icon: ClipboardList },
   { href: '/informatics', label: 'Informática', icon: Laptop },
+  { href: '/teachers', label: 'Professores', icon: UserCog },
+  { href: '/salaries', label: 'Salários', icon: BadgeDollarSign },
+  { href: '/grade-settings', label: 'Ficha de notas', icon: SlidersHorizontal },
   { href: '/documents', label: 'Documentos', icon: FileText },
 ];
 function Shell({ children }: { children: React.ReactNode }) {
@@ -212,6 +215,7 @@ function DocumentsPage() {
   const classes = useGetClasses();
   const [studentId, setStudentId] = useState('');
   const [kind, setKind] = useState<'declaration' | 'certificate'>('declaration');
+  const [model, setModel] = useState(() => localStorage.getItem('noskola-document-model') ?? 'institucional');
   const student = students.data?.find((item) => item.id === Number(studentId));
   const group = classes.data?.find((item) => item.id === student?.classGroupId);
   const title = kind === 'declaration' ? 'Declaração de matrícula' : 'Certificado de aproveitamento';
@@ -221,6 +225,7 @@ function DocumentsPage() {
     <div className="no-print mb-5 grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-[1fr_240px_auto] sm:items-end">
       <Select label="Aluno" value={studentId} onChange={(event) => setStudentId(event.target.value)} data-testid="select-document-student"><option value="">Escolher aluno…</option>{students.data?.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.studentCode}</option>)}</Select>
       <Select label="Tipo de documento" value={kind} onChange={(event) => setKind(event.target.value as 'declaration' | 'certificate')} data-testid="select-document-kind"><option value="declaration">Declaração de matrícula</option><option value="certificate">Certificado de aproveitamento</option></Select>
+      <Select label="Modelo" value={model} onChange={(event) => { setModel(event.target.value); localStorage.setItem('noskola-document-model', event.target.value); }} data-testid="select-document-model"><option value="institucional">Institucional - sugerido</option><option value="minimalista">Minimalista</option><option value="classico">Clássico</option></Select>
       <Button variant="soft" disabled={!student} onClick={() => window.print()} data-testid="button-print-document"><Printer size={16} /> Imprimir documento</Button>
     </div>
     {!student ? <div className="no-print rounded-2xl border border-border bg-card"><Empty icon={FileText} title="Escolha um aluno" copy="Seleccione um aluno para preparar o documento oficial." /></div> : <section className="print-sheet mx-auto max-w-4xl rounded-2xl border border-border bg-card p-8 text-center md:p-14">
@@ -259,7 +264,40 @@ function Informatics() {
     <section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="border-b border-border p-5"><h2 className="font-display text-lg font-bold">Pauta de Informática</h2><p className="mt-1 text-xs text-muted-foreground">Notas de P1, P2 e P3 guardadas neste dispositivo.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-5 py-3">Aluno</th><th className="px-5 py-3">Nível</th><th className="px-3 py-3 text-center">P1</th><th className="px-3 py-3 text-center">P2</th><th className="px-3 py-3 text-center">P3</th><th className="px-5 py-3 text-center">Média</th></tr></thead><tbody className="divide-y divide-border">{students.map((student) => { const grades = [student.p1, student.p2, student.p3].map(Number).filter((value) => !Number.isNaN(value)); const average = grades.length ? (grades.reduce((sum, value) => sum + value, 0) / grades.length).toFixed(1) : '—'; return <tr key={student.id}><td className="px-5 py-4"><p className="font-bold">{student.name}</p><p className="font-mono text-[10px] text-muted-foreground">{student.code}</p></td><td className="px-5 py-4 text-xs text-muted-foreground">{student.level}</td>{(['p1', 'p2', 'p3'] as const).map((field) => <td key={field} className="px-3 py-4 text-center"><input type="number" min="0" max="20" step="0.1" value={student[field]} onChange={(event) => score(student.id, field, event.target.value)} className="h-9 w-16 rounded-md border border-input bg-background px-1 text-center font-mono text-xs" /></td>)}<td className="px-5 py-4 text-center font-mono font-bold">{average}</td></tr>; })}</tbody></table></div></section>
   </div>;
 }
+
+type TeacherRecord = { id: number; name: string; code: string; subject: string; classes: string; active: boolean };
+const teachersKey = 'noskola-teachers';
+const defaultTeachers: TeacherRecord[] = [{ id: 1, name: 'Dulce Gomes', code: 'PROF-2026-001', subject: 'Matemática', classes: '7.º A1, 10.º A1', active: true }];
+function Teachers() {
+  const [teachers, setTeachers] = useState<TeacherRecord[]>(() => { try { return JSON.parse(localStorage.getItem(teachersKey) ?? 'null') ?? defaultTeachers; } catch { return defaultTeachers; } });
+  const [form, setForm] = useState({ name: '', subject: '', classes: '' });
+  const [showForm, setShowForm] = useState(false);
+  const persist = (next: TeacherRecord[]) => { setTeachers(next); localStorage.setItem(teachersKey, JSON.stringify(next)); };
+  const add = (event: FormEvent) => { event.preventDefault(); if (!form.name.trim() || !form.subject.trim()) return; persist([...teachers, { id: Date.now(), ...form, name: form.name.trim(), subject: form.subject.trim(), code: `PROF-2026-${String(teachers.length + 1).padStart(3, '0')}`, active: true }]); setForm({ name: '', subject: '', classes: '' }); setShowForm(false); };
+  return <div className="animate-in"><PageIntro eyebrow="acesso pedagógico" title="Professores" copy="Crie códigos individuais e limite cada professor às turmas atribuídas." action={<Button onClick={() => setShowForm(!showForm)}><Plus size={17} /> Novo professor</Button>} />
+    {showForm && <form onSubmit={add} className="mb-5 grid gap-3 rounded-2xl border border-accent/60 bg-accent/10 p-5 sm:grid-cols-3"><Input label="Nome completo" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /><Input label="Disciplina" required value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /><Input label="Turmas atribuídas" placeholder="Ex.: 7.º A1, 10.º A1" value={form.classes} onChange={(e) => setForm({ ...form, classes: e.target.value })} /><div className="sm:col-span-3"><Button type="submit"><Check size={16} /> Gerar código do professor</Button></div></form>}
+    <section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="border-b border-border p-5"><h2 className="font-display text-lg font-bold">Códigos de acesso</h2><p className="mt-1 text-xs text-muted-foreground">Entregue o código ao professor para preencher apenas as suas pautas.</p></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-5 py-3">Professor</th><th className="px-5 py-3">Disciplina</th><th className="px-5 py-3">Turmas</th><th className="px-5 py-3">Código</th><th className="px-5 py-3">Estado</th></tr></thead><tbody className="divide-y divide-border">{teachers.map((teacher) => <tr key={teacher.id}><td className="px-5 py-4 font-bold">{teacher.name}</td><td className="px-5 py-4">{teacher.subject}</td><td className="px-5 py-4 text-xs text-muted-foreground">{teacher.classes || 'Ainda não atribuídas'}</td><td className="px-5 py-4"><span className="inline-flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-mono text-xs font-bold"><KeyRound size={14} />{teacher.code}</span></td><td className="px-5 py-4"><Badge tone="good">Activo</Badge></td></tr>)}</tbody></table></div></section>
+  </div>;
+}
+
+type SalaryRecord = { id: number; teacher: string; month: string; amount: number; status: 'pending' | 'paid' };
+const salariesKey = 'noskola-salaries';
+function Salaries() {
+  const [salaries, setSalaries] = useState<SalaryRecord[]>(() => { try { return JSON.parse(localStorage.getItem(salariesKey) ?? 'null') ?? [{ id: 1, teacher: 'Dulce Gomes', month: 'Setembro 2026', amount: 150000, status: 'pending' }]; } catch { return []; } });
+  const [form, setForm] = useState({ teacher: '', month: 'Setembro 2026', amount: '' });
+  const persist = (next: SalaryRecord[]) => { setSalaries(next); localStorage.setItem(salariesKey, JSON.stringify(next)); };
+  const add = (event: FormEvent) => { event.preventDefault(); if (!form.teacher || !form.amount) return; persist([...salaries, { id: Date.now(), teacher: form.teacher, month: form.month, amount: Number(form.amount), status: 'pending' }]); setForm({ ...form, teacher: '', amount: '' }); };
+  const toggle = (id: number) => persist(salaries.map((salary) => salary.id === id ? { ...salary, status: salary.status === 'paid' ? 'pending' : 'paid' } : salary));
+  return <div className="animate-in"><PageIntro eyebrow="recursos humanos" title="Pagamento de salário" copy="Registe salários, acompanhe o estado de pagamento e imprima a folha mensal." action={<Button variant="ghost" onClick={() => window.print()}><Printer size={16} /> Imprimir folha</Button>} /><form onSubmit={add} className="mb-5 grid gap-3 rounded-2xl border border-accent/60 bg-accent/10 p-5 sm:grid-cols-4"><Input label="Professor" required value={form.teacher} onChange={(e) => setForm({ ...form, teacher: e.target.value })} /><Input label="Mês" required value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })} /><Input label="Valor FCFA" type="number" min="0" required value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /><div className="flex items-end"><Button type="submit"><Plus size={16} /> Registar</Button></div></form><section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="border-b border-border p-5"><h2 className="font-display text-lg font-bold">Folha de salários</h2></div><table className="w-full text-left text-sm"><thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-5 py-3">Professor</th><th className="px-5 py-3">Período</th><th className="px-5 py-3">Valor</th><th className="px-5 py-3">Estado</th><th className="px-5 py-3 text-right">Acção</th></tr></thead><tbody className="divide-y divide-border">{salaries.map((salary) => <tr key={salary.id}><td className="px-5 py-4 font-bold">{salary.teacher}</td><td className="px-5 py-4">{salary.month}</td><td className="px-5 py-4 font-mono">{money(salary.amount)}</td><td className="px-5 py-4"><Badge tone={salary.status === 'paid' ? 'good' : 'warn'}>{salary.status === 'paid' ? 'Pago' : 'Pendente'}</Badge></td><td className="px-5 py-4 text-right"><Button variant="ghost" onClick={() => toggle(salary.id)}>{salary.status === 'paid' ? 'Marcar pendente' : 'Marcar pago'}</Button></td></tr>)}</tbody></table></section></div>;
+}
+
+function GradeSettings() {
+  const [subjects, setSubjects] = useState(() => localStorage.getItem('noskola-grade-subjects') ?? 'Língua Portuguesa, Matemática, História, Geografia, Ciências, Inglês');
+  const [orientation, setOrientation] = useState(() => localStorage.getItem('noskola-grade-orientation') ?? 'horizontal');
+  const save = () => { localStorage.setItem('noskola-grade-subjects', subjects); localStorage.setItem('noskola-grade-orientation', orientation); };
+  return <div className="animate-in"><PageIntro eyebrow="configuração pedagógica" title="Ficha de notas" copy="Cada escola pode definir as disciplinas e a orientação da sua pauta trimestral." /><section className="max-w-3xl rounded-2xl border border-border bg-card p-5 md:p-7"><div className="grid gap-5"><label className="grid gap-1.5 text-xs font-semibold text-muted-foreground">Disciplinas da pauta<textarea value={subjects} onChange={(e) => setSubjects(e.target.value)} rows={5} className="rounded-lg border border-input bg-background p-3 text-sm text-foreground outline-none focus:border-accent" /><span className="text-[11px] font-normal">Separe as disciplinas por vírgula. A ordem será mantida na impressão.</span></label><Select label="Orientação de impressão" value={orientation} onChange={(e) => setOrientation(e.target.value)}><option value="horizontal">A4 horizontal - recomendado para pautas completas</option><option value="vertical">A4 vertical - recomendado para fichas compactas</option></Select><div><Button onClick={save}><Check size={16} /> Guardar modelo da escola</Button></div></div></section></div>;
+}
 function NotFound() { return <div className="flex min-h-[70vh] flex-col items-center justify-center text-center"><div className="font-mono text-6xl font-bold text-accent">404</div><h1 className="mt-4 font-display text-2xl font-bold">Página não encontrada</h1><Link href="/" className="mt-5 text-sm font-bold text-secondary-foreground hover:underline" data-testid="link-back-home">Voltar à visão geral</Link></div>; }
-function Router() { return <Shell><Switch><Route path="/" component={Dashboard} /><Route path="/schools" component={Schools} /><Route path="/classes" component={Classes} /><Route path="/students" component={Students} /><Route path="/finance" component={Finance} /><Route path="/grades" component={Grades} /><Route path="/informatics" component={Informatics} /><Route path="/documents" component={DocumentsPage} /><Route path="/settings" component={SettingsPage} /><Route component={NotFound} /></Switch></Shell>; }
+function Router() { return <Shell><Switch><Route path="/" component={Dashboard} /><Route path="/schools" component={Schools} /><Route path="/classes" component={Classes} /><Route path="/students" component={Students} /><Route path="/finance" component={Finance} /><Route path="/grades" component={Grades} /><Route path="/informatics" component={Informatics} /><Route path="/teachers" component={Teachers} /><Route path="/salaries" component={Salaries} /><Route path="/grade-settings" component={GradeSettings} /><Route path="/documents" component={DocumentsPage} /><Route path="/settings" component={SettingsPage} /><Route component={NotFound} /></Switch></Shell>; }
 function App() { return <QueryClientProvider client={queryClient}><TooltipProvider><ErrorBoundary><Router /></ErrorBoundary><Toaster /></TooltipProvider></QueryClientProvider>; }
 export default App;
