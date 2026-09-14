@@ -74,9 +74,21 @@ export function demoApi(url: string, options: RequestInit = {}): unknown {
   }
   const statusMatch = path.match(/\/schools\/(\d+)\/status$/);
   if (statusMatch && method === 'PATCH') { const item = data.schools.find((school) => school.id === Number(statusMatch[1])); Object.assign(item ?? {}, bodyOf(options)); save(data); return item; }
+  const schoolIdMatch = path.match(/\/schools\/(\d+)$/);
+  if (schoolIdMatch) {
+    const id = Number(schoolIdMatch[1]);
+    if (method === 'PATCH') { const item = data.schools.find((school) => school.id === id); if (item) Object.assign(item, bodyOf(options)); save(data); return item; }
+    if (method === 'DELETE') { data.schools = data.schools.filter((school) => school.id !== id); save(data); return { success: true }; }
+  }
   if (path.endsWith('/classes')) {
     if (method === 'POST') { const input = bodyOf(options); const item = { ...input, id: Date.now(), enrolledCount: 0 }; data.classes.push(item); save(data); return item; }
     return data.classes;
+  }
+  const classIdMatch = path.match(/\/classes\/(\d+)$/);
+  if (classIdMatch) {
+    const id = Number(classIdMatch[1]);
+    if (method === 'PATCH') { const item = data.classes.find((group) => group.id === id); if (item) Object.assign(item, bodyOf(options)); save(data); return item; }
+    if (method === 'DELETE') { data.classes = data.classes.filter((group) => group.id !== id); data.students = data.students.filter((student) => student.classGroupId !== id); save(data); return { success: true }; }
   }
   if (path.endsWith('/students')) {
     if (method === 'POST') { const input = bodyOf(options); const group = data.classes.find((item) => item.id === input.classGroupId); const item = { ...input, id: Date.now(), studentCode: `ECB-${String(data.students.length + 1).padStart(4, '0')}`, className: group?.name ?? 'Classe', enrollmentStatus: 'active', enrolledAt: new Date().toISOString() }; data.students.push(item); if (group) group.enrolledCount = Number(group.enrolledCount ?? 0) + 1; save(data); return item; }
@@ -87,9 +99,34 @@ export function demoApi(url: string, options: RequestInit = {}): unknown {
     if (query) result = result.filter((item) => String(item.name).toLowerCase().includes(query) || String(item.studentCode).toLowerCase().includes(query));
     return result;
   }
+  const studentIdMatch = path.match(/\/students\/(\d+)$/);
+  if (studentIdMatch) {
+    const id = Number(studentIdMatch[1]);
+    if (method === 'PATCH') { const item = data.students.find((student) => student.id === id); if (item) Object.assign(item, bodyOf(options)); save(data); return item; }
+    if (method === 'DELETE') {
+      const item = data.students.find((student) => student.id === id);
+      data.students = data.students.filter((student) => student.id !== id);
+      const group = data.classes.find((candidate) => candidate.id === item?.classGroupId);
+      if (group) group.enrolledCount = Math.max(0, Number(group.enrolledCount ?? 0) - 1);
+      save(data);
+      return { success: true };
+    }
+  }
   if (path.endsWith('/finance/overview')) { const expected = data.fees.reduce((sum, item) => sum + Number(item.amount ?? 0), 0); const received = data.fees.reduce((sum, item) => sum + Number(item.paidAmount ?? 0), 0); const expenses = data.expenses.reduce((sum, item) => sum + Number(item.amount ?? 0), 0); return { expectedFees: expected, receivedFees: received, pendingFees: expected - received, expenses, balance: received - expenses, monthly: [] }; }
   if (path.endsWith('/fees')) { if (method === 'POST') { const input = bodyOf(options); const student = data.students.find((item) => item.id === input.studentId); const item = { ...input, id: Date.now(), studentName: student?.name ?? 'Aluno', studentCode: student?.studentCode ?? '', status: Number(input.paidAmount) >= Number(input.amount) ? 'paid' : Number(input.paidAmount) > 0 ? 'partial' : 'pending', paymentDate: Number(input.paidAmount) > 0 ? new Date().toISOString() : null }; data.fees.push(item); save(data); return item; } return data.fees; }
+  const feeIdMatch = path.match(/\/fees\/(\d+)$/);
+  if (feeIdMatch) {
+    const id = Number(feeIdMatch[1]);
+    if (method === 'PATCH') { const item = data.fees.find((fee) => fee.id === id); if (item) Object.assign(item, bodyOf(options)); save(data); return item; }
+    if (method === 'DELETE') { data.fees = data.fees.filter((fee) => fee.id !== id); save(data); return { success: true }; }
+  }
   if (path.endsWith('/expenses')) { if (method === 'POST') { const item = { ...bodyOf(options), id: Date.now() }; data.expenses.push(item); save(data); return item; } return data.expenses; }
+  const expenseIdMatch = path.match(/\/expenses\/(\d+)$/);
+  if (expenseIdMatch) {
+    const id = Number(expenseIdMatch[1]);
+    if (method === 'PATCH') { const item = data.expenses.find((expense) => expense.id === id); if (item) Object.assign(item, bodyOf(options)); save(data); return item; }
+    if (method === 'DELETE') { data.expenses = data.expenses.filter((expense) => expense.id !== id); save(data); return { success: true }; }
+  }
   const gradeMatch = path.match(/\/grade-sheets\/(\d+)(?:\/trimester\/(\d+))?$/);
   if (gradeMatch) { const classId = Number(gradeMatch[1]); const trimester = Number(gradeMatch[2] ?? 1); if (method === 'PUT') { const input = bodyOf(options); data.grades[`${classId}-${input.trimester}`] = { ...gradeSheet(data, classId, input.trimester), ...input }; save(data); return data.grades[`${classId}-${input.trimester}`]; } return gradeSheet(data, classId, trimester); }
   return {};
