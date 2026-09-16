@@ -187,6 +187,11 @@ const gradeSheetsStorageKey = 'noskola-class-grade-sheets';
 
 function Grades() {
   const classes = useGetClasses();
+  const [teacherCode, setTeacherCode] = useState('');
+  const [teacherName, setTeacherName] = useState(() => sessionStorage.getItem('noskola-grades-teacher') ?? '');
+  const [accessError, setAccessError] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
   const [level, setLevel] = useState('');
   const [classGroupId, setClassGroupId] = useState('');
   const [trimester, setTrimester] = useState('1');
@@ -201,6 +206,21 @@ function Grades() {
   });
   const rows = sheets[sheetKey] ?? {};
   const rowFor = (studentId: number) => rows[studentId] ?? blankGradeRow;
+  const verifyTeacher = (event: FormEvent) => {
+    event.preventDefault();
+    const teachers = (() => { try { return JSON.parse(localStorage.getItem(teachersKey) ?? 'null') ?? defaultTeachers; } catch { return defaultTeachers; } })() as TeacherRecord[];
+    const teacher = teachers.find(item => item.active && item.code.toLowerCase() === teacherCode.trim().toLowerCase());
+    if (!teacher) { setAccessError('Código de professor inválido ou inactivo.'); return; }
+    setTeacherName(teacher.name);
+    sessionStorage.setItem('noskola-grades-teacher', teacher.name);
+    setAccessError('');
+  };
+  const saveGrades = () => {
+    localStorage.setItem(gradeSheetsStorageKey, JSON.stringify(sheets));
+    setDirty(false);
+    setSavedMessage(`Notas guardadas por ${teacherName}.`);
+    window.setTimeout(() => setSavedMessage(''), 2500);
+  };
   const setCell = (studentId: number, key: GradeColumnKey, value: string) => {
     setSheets(current => {
       const currentRow = current[sheetKey]?.[studentId] ?? blankGradeRow;
@@ -210,23 +230,25 @@ function Grades() {
         nextRow.mm = periods.length ? (periods.reduce((sum, n) => sum + n, 0) / periods.length).toFixed(1) : '';
       }
       const next = { ...current, [sheetKey]: { ...current[sheetKey], [studentId]: nextRow } };
-      localStorage.setItem(gradeSheetsStorageKey, JSON.stringify(next));
+      setDirty(true);
       return next;
     });
   };
 
   return <div className="animate-in">
-    <PageIntro eyebrow="avaliação oficial" title="Pautas e notas" copy="Escolha a classe e a turma para lançar P1, P2, P3, Pc, PG, MM, Ex/P e Especial de cada aluno." action={id ? <Button variant="ghost" onClick={() => window.print()} data-testid="button-print-grades"><Printer size={16} /> Imprimir pauta A4</Button> : undefined} />
-    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-end">
+    <PageIntro eyebrow="avaliação oficial" title="Pautas e notas" copy="Cada professor deve introduzir o seu código para registar e guardar as notas da sua turma." action={teacherName && id ? <div className="flex gap-2"><Button onClick={saveGrades} disabled={!dirty} data-testid="button-save-grades"><Check size={16} /> {dirty ? 'Registar e guardar notas' : 'Notas guardadas'}</Button><Button variant="ghost" onClick={() => window.print()} data-testid="button-print-grades"><Printer size={16} /> Imprimir pauta A4</Button></div> : undefined} />
+    {!teacherName ? <form onSubmit={verifyTeacher} className="mb-5 max-w-xl rounded-2xl border border-accent/60 bg-accent/10 p-5"><div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"><Input label="Código do professor" required value={teacherCode} onChange={event => setTeacherCode(event.target.value)} placeholder="Ex.: PROF-2026-001" data-testid="input-teacher-grade-code" /><Button type="submit" data-testid="button-access-grades"><KeyRound size={16} /> Aceder às pautas</Button></div>{accessError && <p className="mt-3 text-xs font-semibold text-destructive">{accessError}</p>}</form> : <div className="mb-5 flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-xs"><span>Professor autenticado: <strong>{teacherName}</strong></span><button className="font-semibold text-muted-foreground hover:text-foreground" onClick={() => { sessionStorage.removeItem('noskola-grades-teacher'); setTeacherName(''); }}>Sair das pautas</button></div>}
+    {savedMessage && <p className="mb-4 text-xs font-semibold text-secondary-foreground" data-testid="text-grades-saved">{savedMessage}</p>}
+    {teacherName && <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-end">
       <Select label="Classe" value={level} onChange={(event) => { setLevel(event.target.value); setClassGroupId(''); }} data-testid="select-grade-level"><option value="">Escolher classe…</option>{levels.map(item => <option key={item} value={item}>{item}</option>)}</Select>
       <Select label="Turma" value={classGroupId} onChange={(event) => setClassGroupId(event.target.value)} disabled={!level} data-testid="select-grade-class"><option value="">Escolher turma…</option>{turmas.map(group => <option key={group.id} value={group.id}>{group.name} · {group.academicYear}</option>)}</Select>
       <Select label="Trimestre" value={trimester} onChange={(event) => setTrimester(event.target.value)} data-testid="select-grade-trimester"><option value="1">1.º trimestre</option><option value="2">2.º trimestre</option><option value="3">3.º trimestre</option></Select>
-    </div>
-    {!id ? <div className="rounded-2xl border border-border bg-card"><Empty icon={ClipboardList} title="Escolha a classe e a turma" copy="Seleccione a classe, a turma e o trimestre para abrir a ficha de notas." /></div> : students.isLoading ? <Skeleton className="h-72" /> : students.isError ? <ErrorState retry={() => students.refetch()} /> : !students.data?.length ? <div className="rounded-2xl border border-border bg-card"><Empty icon={ClipboardList} title="Turma sem alunos" copy="Matricule alunos nesta turma para abrir a ficha de notas." /></div> : <section className="print-sheet overflow-hidden rounded-2xl border border-border bg-card">
+    </div>}
+    {teacherName && (!id ? <div className="rounded-2xl border border-border bg-card"><Empty icon={ClipboardList} title="Escolha a classe e a turma" copy="Seleccione a classe, a turma e o trimestre para abrir a ficha de notas." /></div> : students.isLoading ? <Skeleton className="h-72" /> : students.isError ? <ErrorState retry={() => students.refetch()} /> : !students.data?.length ? <div className="rounded-2xl border border-border bg-card"><Empty icon={ClipboardList} title="Turma sem alunos" copy="Matricule alunos nesta turma para abrir a ficha de notas." /></div> : <section className="print-sheet overflow-hidden rounded-2xl border border-border bg-card">
       <div className="border-b border-border bg-primary p-5 text-primary-foreground md:p-6"><div className="flex items-start justify-between"><div><p className="font-mono text-[10px] uppercase tracking-widest text-accent">Documento oficial · classificação</p><h2 className="mt-2 font-display text-2xl font-bold">{currentGroup?.name}</h2><p className="mt-1 text-xs text-primary-foreground/60">{trimester}.º trimestre · {currentGroup?.academicYear}</p></div><div className="hidden h-12 w-12 items-center justify-center rounded-xl bg-accent text-primary sm:flex"><GraduationCap size={25} /></div></div></div>
       <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-[11px]"><thead className="bg-muted/50 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="sticky left-0 z-10 bg-muted/50 px-3 py-3">Aluno</th>{gradeColumns.map(column => <th key={column.key} className="border-l border-border px-2 py-3 text-center">{column.label}</th>)}</tr></thead><tbody className="divide-y divide-border">{students.data.map(student => { const row = rowFor(student.id); return <tr key={student.id} className="hover:bg-muted/20" data-testid={`row-grade-${student.id}`}><td className="sticky left-0 z-10 bg-card px-3 py-3"><p className="max-w-40 truncate font-bold">{student.name}</p><p className="font-mono text-[10px] text-muted-foreground">{student.studentCode}</p></td>{gradeColumns.map(column => <td key={column.key} className="border-l border-border/50 px-1 py-2 text-center">{column.key === 'mm' ? <span className="font-mono font-bold">{row.mm || '—'}</span> : <input type="number" min="0" max="20" step=".1" value={row[column.key]} onChange={(event) => setCell(student.id, column.key, event.target.value)} className="h-8 w-14 rounded-md border border-input bg-background px-1 text-center font-mono text-[11px] outline-none focus:border-accent" aria-label={`${student.name} ${column.label}`} data-testid={`input-grade-${student.id}-${column.key}`} />}</td>)}</tr>; })}</tbody></table></div>
       <div className="hidden border-t border-border p-5 text-[10px] text-muted-foreground sm:flex sm:justify-between"><span>Documento gerado pelo nôskola · Secretaria pedagógica</span><span>Assinatura da Direcção: ____________________</span></div>
-    </section>}
+    </section>)}
   </div>;
 }
 
