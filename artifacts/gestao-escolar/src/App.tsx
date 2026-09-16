@@ -14,6 +14,7 @@ import {
   useGetGradeSheet, getGetGradeSheetQueryKey, useGetGradeSheetForTrimester,
   getGetGradeSheetForTrimesterQueryKey, useUpdateGradeSheet,
 } from '@workspace/api-client-react';
+import { setBaseUrl } from '@workspace/api-client-react';
 import {
   ArrowDownRight, ArrowUpRight, Banknote, BarChart3, BookOpen, CalendarDays, Check, ChevronDown,
   CircleAlert, CircleDollarSign, ClipboardList, FileText, GraduationCap, LayoutDashboard, Menu,
@@ -23,6 +24,7 @@ import {
 import { Link, Route, Switch, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
+setBaseUrl(import.meta.env.VITE_API_URL ?? null);
 const money = (n = 0) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(n).replace('XOF', 'FCFA');
 const date = (v?: string | null) => v ? new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(v)) : '—';
 const initials = (name = '') => name.split(' ').slice(0, 2).map((x) => x[0]).join('').toUpperCase();
