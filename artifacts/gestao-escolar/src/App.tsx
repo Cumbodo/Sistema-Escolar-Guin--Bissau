@@ -332,11 +332,15 @@ function GradeSettings() {
 function NotFound() { return <div className="flex min-h-[70vh] flex-col items-center justify-center text-center"><div className="font-mono text-6xl font-bold text-accent">404</div><h1 className="mt-4 font-display text-2xl font-bold">Página não encontrada</h1><Link href="/" className="mt-5 text-sm font-bold text-secondary-foreground hover:underline" data-testid="link-back-home">Voltar à visão geral</Link></div>; }
 function Login() {
   const schools = useGetSchools();
+  const createSchool = useCreateSchool();
   const [mode, setMode] = useState<'school' | 'admin'>('school');
+  const [schoolAction, setSchoolAction] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [signup, setSignup] = useState({ name: '', city: '', contactName: '', phone: '', confirmPassword: '' });
   const [adminCode, setAdminCode] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const loginSchool = (event: FormEvent) => {
     event.preventDefault();
     const normalized = email.trim().toLowerCase();
@@ -356,13 +360,24 @@ function Login() {
     localStorage.setItem('noskola-session', JSON.stringify({ type: 'admin' }));
     window.location.href = '/';
   };
+  const registerSchool = (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+    const normalized = email.trim().toLowerCase();
+    if (password.length < 4 || password !== signup.confirmPassword) { setError('A palavra-passe deve ter pelo menos 4 caracteres e coincidir na confirmação.'); return; }
+    if (schools.data?.some(item => item.email.trim().toLowerCase() === normalized)) { setError('Já existe uma escola registada com este email.'); return; }
+    createSchool.mutate({ data: { name: signup.name.trim(), city: signup.city.trim(), contactName: signup.contactName.trim(), email: normalized, phone: signup.phone.trim() } }, { onSuccess: () => { localStorage.setItem(`noskola-school-password:${normalized}`, password); setSchoolAction('login'); setSuccess('Conta criada. Aguarde a aprovação da administração para entrar.'); setPassword(''); setSignup({ name: '', city: '', contactName: '', phone: '', confirmPassword: '' }); } });
+  };
   return <div className="flex min-h-[100dvh] items-center justify-center bg-background p-5">
     <div className="w-full max-w-md rounded-2xl border border-border bg-card p-7">
       <div className="mb-6 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-primary"><GraduationCap size={22} strokeWidth={2.5} /></div><div><p className="font-display text-lg font-bold">nôskola</p><p className="text-xs text-muted-foreground">Acesso à plataforma</p></div></div>
-      <div className="mb-5 flex rounded-lg bg-muted p-1"><button onClick={() => { setMode('school'); setError(''); }} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold ${mode === 'school' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`} data-testid="tab-login-school">Escola</button><button onClick={() => { setMode('admin'); setError(''); }} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold ${mode === 'admin' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`} data-testid="tab-login-admin">Administração</button></div>
-      {mode === 'school' ? <form onSubmit={loginSchool} className="grid gap-3"><Input label="Email da escola" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} data-testid="input-login-email" /><Input label="Palavra-passe" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} data-testid="input-login-password" /><Button type="submit" data-testid="button-login-school">Entrar</Button></form> : <form onSubmit={loginAdmin} className="grid gap-3"><Input label="Código de administração" required value={adminCode} onChange={(event) => setAdminCode(event.target.value)} data-testid="input-login-admin-code" /><Button type="submit" data-testid="button-login-admin">Entrar como administração</Button></form>}
+      <div className="mb-5 flex rounded-lg bg-muted p-1"><button onClick={() => { setMode('school'); setError(''); setSuccess(''); }} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold ${mode === 'school' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`} data-testid="tab-login-school">Escola</button><button onClick={() => { setMode('admin'); setError(''); setSuccess(''); }} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold ${mode === 'admin' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`} data-testid="tab-login-admin">Administração</button></div>
+      {mode === 'school' && <div className="mb-4 flex rounded-lg border border-border p-1"><button type="button" onClick={() => { setSchoolAction('login'); setError(''); setSuccess(''); }} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold ${schoolAction === 'login' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`} data-testid="tab-school-login">Entrar</button><button type="button" onClick={() => { setSchoolAction('signup'); setError(''); setSuccess(''); }} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold ${schoolAction === 'signup' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`} data-testid="tab-school-signup">Criar conta</button></div>}
+      {mode === 'school' && schoolAction === 'login' ? <form onSubmit={loginSchool} className="grid gap-3"><Input label="Email da escola" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} data-testid="input-login-email" /><Input label="Palavra-passe" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} data-testid="input-login-password" /><Button type="submit" data-testid="button-login-school">Entrar</Button></form> : mode === 'school' ? <form onSubmit={registerSchool} className="grid gap-3"><Input label="Nome da escola" required value={signup.name} onChange={event => setSignup({ ...signup, name: event.target.value })} data-testid="input-signup-school-name" /><div className="grid gap-3 sm:grid-cols-2"><Input label="Cidade" required value={signup.city} onChange={event => setSignup({ ...signup, city: event.target.value })} data-testid="input-signup-city" /><Input label="Telefone" required value={signup.phone} onChange={event => setSignup({ ...signup, phone: event.target.value })} data-testid="input-signup-phone" /></div><Input label="Pessoa de contacto" required value={signup.contactName} onChange={event => setSignup({ ...signup, contactName: event.target.value })} data-testid="input-signup-contact" /><Input label="Email da escola" type="email" required value={email} onChange={event => setEmail(event.target.value)} data-testid="input-signup-email" /><Input label="Palavra-passe" type="password" minLength={4} required value={password} onChange={event => setPassword(event.target.value)} data-testid="input-signup-password" /><Input label="Confirmar palavra-passe" type="password" required value={signup.confirmPassword} onChange={event => setSignup({ ...signup, confirmPassword: event.target.value })} data-testid="input-signup-password-confirm" /><Button type="submit" disabled={createSchool.isPending} data-testid="button-signup-school">{createSchool.isPending ? 'A criar conta…' : 'Criar conta da escola'}</Button></form> : <form onSubmit={loginAdmin} className="grid gap-3"><Input label="Código de administração" required value={adminCode} onChange={(event) => setAdminCode(event.target.value)} data-testid="input-login-admin-code" /><Button type="submit" data-testid="button-login-admin">Entrar como administração</Button></form>}
       {error && <p className="mt-4 text-xs font-semibold text-destructive">{error}</p>}
-      <p className="mt-6 text-xs text-muted-foreground">Ainda não tem conta? Peça à administração para registar a sua escola em Escolas, com o email e a palavra-passe da instituição.</p>
+      {success && <p className="mt-4 text-xs font-semibold text-secondary-foreground">{success}</p>}
+      <p className="mt-6 text-xs text-muted-foreground">As novas escolas aguardam aprovação da administração antes de poderem entrar na plataforma.</p>
     </div>
   </div>;
 }
